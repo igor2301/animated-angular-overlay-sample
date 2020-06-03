@@ -1,0 +1,6 @@
+<div class="container" [@show]="animationState" (@show.start)="onAnimationStart($event)" (@show.done)="onAnimationDone($event)">
+  <p>overlay-sample works!</p>
+  <button (click)="open()">
+    Open
+  </button>
+</div>
