@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit } from '@angular/core';
 import { OverlaySampleService } from '../overlay-sample.service';
 import { BaseDialogComponent } from '../base-dialog.component';
 
@@ -8,11 +8,13 @@ import { BaseDialogComponent } from '../base-dialog.component';
   styleUrls: ['./custom-dialog.component.scss']
 })
 export class CustomDialogComponent extends BaseDialogComponent implements OnInit {
-  constructor(private overlayService: OverlaySampleService) {
-    super();
+  constructor(elementRef: ElementRef, private overlayService: OverlaySampleService) {
+    super(elementRef);
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    super.ngOnInit();
+  }
 
   public open() {
     this.overlayService.open(CustomDialogComponent).subscribe(() => {

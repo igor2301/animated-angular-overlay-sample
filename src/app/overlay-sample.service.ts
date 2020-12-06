@@ -1,41 +1,67 @@
-import { Injectable, OnDestroy, Type } from '@angular/core';
+import { EventEmitter, Injectable, InjectionToken, Injector, Type } from '@angular/core';
 import { Overlay, OverlayConfig } from '@angular/cdk/overlay';
-import { ComponentPortal } from '@angular/cdk/portal';
+import { ComponentPortal, PortalInjector } from '@angular/cdk/portal';
 import { BaseDialogComponent } from './base-dialog.component';
 import { OverlaySampleRef } from './overlay-sample-reference';
-import { Subscription } from 'rxjs';
+import { OverlaySampleConfig } from './overlay-sample-config';
+
+export const DIALOG_DATA = new InjectionToken('DIALOG_DATA');
 
 @Injectable()
-export class OverlaySampleService implements OnDestroy {
-  private subscription = new Subscription();
+export class OverlaySampleService {
+  openDialogs: OverlaySampleRef[] = [];
+  afterOpened = new EventEmitter<OverlaySampleRef>();
 
-  constructor(private overlay: Overlay) {}
+  constructor(private overlay: Overlay, private parentInjector: Injector) {}
 
-  public open<T extends BaseDialogComponent>(comp: Type<T>) {
+  open<T extends BaseDialogComponent>(comp: Type<T>, dialogConfig?: OverlaySampleConfig) {
     const positionStrategy = this.overlay.position().global().centerHorizontally().centerVertically();
 
     const config = new OverlayConfig({
       positionStrategy,
       hasBackdrop: true
     });
+
+    if (!dialogConfig) {
+      dialogConfig = { disableClose: false };
+    }
+
     const overlayRef = this.overlay.create(config);
-    const samplePortal = new ComponentPortal(comp);
+    const reference = new OverlaySampleRef(overlayRef, dialogConfig);
+    const injector = this.createInjector(reference, dialogConfig);
+    const portal = new ComponentPortal(comp, null, injector);
 
-    const componentRef = overlayRef.attach(samplePortal);
+    const componentRef = overlayRef.attach(portal);
 
-    const reference = new OverlaySampleRef(overlayRef);
     reference.componentInstance = componentRef.instance;
 
-    this.subscription.add(
-      overlayRef.backdropClick().subscribe(() => {
-        reference.close();
-      })
-    );
+    this.openDialogs.push(reference);
+    this.afterOpened.emit(reference);
+
+    const subscription = reference.closed.subscribe(() => {
+      this.openDialogs = this.openDialogs.filter((dialog) => dialog !== reference);
+      subscription.unsubscribe();
+    });
 
     return reference.closed;
   }
 
-  public ngOnDestroy(): void {
-    this.subscription.unsubscribe();
+  private createInjector(reference: OverlaySampleRef, config: OverlaySampleConfig): PortalInjector {
+    const injectionTokens = new WeakMap();
+    if (config.data) {
+      injectionTokens.set(DIALOG_DATA, config.data);
+    }
+    injectionTokens.set(OverlaySampleRef, reference);
+
+    return new PortalInjector(this.parentInjector, injectionTokens);
+  }
+
+  closeAll() {
+    this.openDialogs.forEach((dialog) => dialog.close());
+    this.openDialogs = [];
+  }
+
+  getActiveDialog() {
+    return this.openDialogs.length === 0 ? null : this.openDialogs[this.openDialogs.length - 1];
   }
 }

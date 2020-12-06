@@ -3,16 +3,28 @@ import { BaseDialogComponent } from './base-dialog.component';
 import { filter } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
 import { EventEmitter } from '@angular/core';
+import { OverlaySampleConfig } from './overlay-sample-config';
 
 export class OverlaySampleRef {
-  public componentInstance: BaseDialogComponent;
-  private subscription = new Subscription();
-  public closed = new EventEmitter();
+  componentInstance: BaseDialogComponent;
 
-  constructor(private overlayRef: OverlayRef) {
-    this.closed.subscribe(() => {
+  private subscription = new Subscription();
+
+  backdropClick = new EventEmitter<MouseEvent>();
+  closed = new EventEmitter<any>();
+
+  constructor(private overlayRef: OverlayRef, private config: OverlaySampleConfig) {
+    const closedSubscription = this.closed.subscribe(() => {
+      closedSubscription.unsubscribe();
       this.subscription.unsubscribe();
-      this.closed.unsubscribe();
+    });
+
+    const backdropClickSubscription = overlayRef.backdropClick().subscribe((event) => {
+      backdropClickSubscription.unsubscribe();
+      this.backdropClick.emit(event);
+      if (!config.disableClose) {
+        this.close();
+      }
     });
   }
 
